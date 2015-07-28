@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+#coding=utf-8
+"""
+for help http://www.yzqy.cc
+此模块为sql注入检测处理模块
+"""
+
+from  request import *
+
+payload1="+and+1=1"
+payload2="+and+1=2"
+payload3="+'+"
+
+def sqlinject(row,methed,timeout):
+	pay1=row+payload1
+	pay2=row+payload1
+	pay3=row+payload1
+	header,body,bodysize,headersize,status=opener(row,methed,timeout)
+	header1,body1,bodysize1,headersize1,status1=opener(pay1,methed,timeout)
+	header2,body2,bodysize2,headersize2,status2=opener(pay2,methed,timeout)
+	header3,body3,bodysize3,headersize3,status3=opener(pay3,methed,timeout)
+	if  status=="200":
+		if bodysize1!=bodysize2||bodysize3:
+			print row
+			issue=row
