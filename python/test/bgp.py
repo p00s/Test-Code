@@ -21,6 +21,7 @@ class Main(object):
 		if os.path.isfile(self.refile):
 			os.remove(self.refile)
 	def run(self):
+		#请求网页内容
 		headers={
 			'Host': 'bgp.he.net',
 
@@ -42,6 +43,7 @@ class Main(object):
 			os._exit(0)
 
 	def html(self,body):
+		#提取获得的链接
 		soup = BeautifulSoup(body)
 		dns = soup.find('div',id = 'dns')
 		links = dns.find_all('a')
