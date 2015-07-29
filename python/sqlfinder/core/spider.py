@@ -7,25 +7,27 @@ for help http://www.yzqy.cc
 """
 from bs4 import BeautifulSoup
 import re
-from sqlite3con import *
-from request import opener
+from sqlite3con import DB_method
+import request
 
 rule=r'[a-zA-z]+://[\w-]*[\.]?[\w]+\.[a-zA-Z]+'
 
-def html(conn,url,body):
-	soup = BeautifulSoup(body)
-	links = soup.find_all('a')
-	for link in links:
-		_link=link.get('href')
-		#print _link
-		'''if str(re.findall(rule,_link)[0])!=url:
-			print "err"
-		else:	'''
-		inser_data(conn,_link,TABLE_NAME_1)
-	print "[info]insered!"
-
-
-if __name__ == '__main__':
-	header,body,bodysize,headersize,status=opener("http://www.yzqy.cc",'get',3)
-	conn=init()
-	html(conn,"http://www.yzqy.cc",body)
+class Spider(object):
+	"""docstring for Spider"""
+	def __init__(self):
+		super(Spider, self).__init__()
+		#self.arg = arg
+		
+	def html(self,url,body):
+		soup = BeautifulSoup(body)
+		links = soup.find_all('a')
+		spider = DB_method()
+		for i in links:
+			link=i.get('href')
+			#print _link
+			'''if str(re.findall(rule,_link)[0])!=url:
+				print "err"
+				else:	'''
+			spider.inser_data(link,spider.TABLE_NAME_1)
+		print "[info]insered complied"
+		return links

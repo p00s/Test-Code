@@ -8,80 +8,70 @@ for help http://www.yzqy.cc
 
 import sqlite3
 
-#global var
-DB_FILE_PATH = 'data/sqlfinder.db'  
-#database path
+class DB_method(object):
+	"""docstring for DB_method"""		
+	#global var
+	DB_FILE_PATH = 'data/sqlfinder.db'  
+	#database path
+	TABLE_NAME_1 = 'spider'
+	TABLE_NAME_2 = 'sqlinject'
+	#table name
+	def __init__(self):
+		#self.arg = arg
+		self.conn=self.get_conn(self.DB_FILE_PATH)
+		self.cu = self.get_cursor(self.conn)
 
-TABLE_NAME_1 = 'spider'
-TABLE_NAME_2 = 'sqlinject'
-#table name
+	def get_conn(self,path):
+	 	'''连接sqlite3数据库方法'''
+	 	try:  
+	        		return sqlite3.connect(path)  
+	        		print "connect sussess"
+	    	except sqlite3.Error,e:  
+	        		print "connect sqlite3 database fail!", "\n", e.args[0]  
+        
+	def get_cursor(self,conn):
+		'''获取游标'''
+		if conn is not None:
+			return conn.cursor()
+		else:
+			return get_conn(DB_FILE_PATH) .get_cursor()
 
-def get_conn(path):
- 	'''连接sqlite3数据库方法'''
- 	try:  
-        		return sqlite3.connect(path)  
-        		print "connect sussess"
-    	except sqlite3.Error,e:  
-        		print "connect sqlite3 database fail!", "\n", e.args[0]  
-        	
+	def drop_table(self):
+		'''判断是否有数据库存在,有就删除'''
+		sql = 'DROP TABLE IF EXISTS %s' % self.TABLE_NAME_1
+		sql1='DROP TABLE IF EXISTS %s' % self.TABLE_NAME_2
+ 		self.cu.execute(sql)
+ 		self.cu.execute(sql1)
+ 		self.conn.commit()
+ 		print "[info]drop sussess"
 
-def get_cursor(conn):
-	'''获取游标'''
-	'''if conn is not None:'''
-	cu=conn.cursor()
-	return cu
-	'''else:
-		return get_conn(DB_FILE_PATH) .cursor()'''
+	def create_table(self):
+ 		'''创建新数据库方法'''
+ 		sql = 'CREATE TABLE %s(id INTEGER PRIMARY KEY ,link VARCHAR,methed VARCHAR,data VARCHAR)' % self.TABLE_NAME_1
+ 		sql1='CREATE TABLE %s(id INTEGER PRIMARY KEY ,link VARCHAR,methed VARCHAR,data VARCHAR)' % self.TABLE_NAME_2
+ 		self.cu.execute(sql)
+ 		self.cu.execute(sql1)
+ 		self.conn.commit()
+ 		print "[info]create sussess"
 
-def drop_table(conn,table1,table2):
-	'''判断是否有数据库存在,有就删除'''
-	sql = 'DROP TABLE IF EXISTS %s' % table1
-	sql1='DROP TABLE IF EXISTS %s' % table2
-	cu = get_cursor(conn)
- 	cu.execute(sql)
- 	cu.execute(sql1)
- 	conn.commit()
- 	print "[info]drop sussess"
+	def inser_data(self,data,table):
+	 	'''插入数据方法'''
+	 	if data is not None:
+	 		sql='INSERT INTO %s(link) VALUES("%s")' % (table,data)
+	 		#cu=self.get_cursor(conn)
+	 		self.cu.execute(sql)
+	 		self.conn.commit()
+	 	#print "[info]inser success  "+table
 
-def create_table(conn,table1,table2):
- 	'''创建新数据库方法'''
- 	sql = 'CREATE TABLE %s(id INTEGER PRIMARY KEY ,link VARCHAR,methed VARCHAR,data VARCHAR)' % table1
- 	sql1='CREATE TABLE %s(id INTEGER PRIMARY KEY ,link VARCHAR,methed VARCHAR,data VARCHAR)' % table2
- 	cu = get_cursor(conn)
- 	cu.execute(sql)
- 	cu.execute(sql1)
- 	conn.commit()
- 	print "[info]create sussess"
+	def select_data(self,table):
+		'''查询方法'''
+		sql='SELECT link FROM %s' % table
+		#cu=self.get_cursor(conn)
+		res= self.cu.fetchall(sql)
+		self.conn.commit()
+		print "[info]select success "
+		return res
 
-def inser_data(conn,data,table):
- 	'''插入数据方法'''
- 	if data is not None:
- 		sql='INSERT INTO %s(link) VALUES("%s")' % (table,data)
- 		cu=get_cursor(conn)
- 		cu.execute(sql)
- 		conn.commit()
- 	#print "[info]inser success  "+table
+	def __del__(self):
+		return self.conn.close()
 
-def select_data(conn,table):
-	'''查询方法'''
-	sql='SELECT link FROM %s' % table
-	cu=get_cursor(conn)
-	cu.execute(sql)
-	conn.commit()
-	res= cu.fetchall()
-	print "[info]select success "
-	return res
-
-def init():
-	'''初始化方法'''
-	conn=get_conn(DB_FILE_PATH)
-	drop_table(conn,TABLE_NAME_1,TABLE_NAME_2)
-	create_table(conn,TABLE_NAME_1,TABLE_NAME_2)
-	print "[info] init sussessful"
-	return conn
-
-
-
-
-if __name__ == '__main__':
-	init()

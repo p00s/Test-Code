@@ -7,30 +7,31 @@ for help http://www.yzqy.cc
 
 import requests
 
-def opener(url,methed,times):
-	'''通过传入的方法来请求网页'''
-	if methed=='get':
-		try:
-			fopen=requests.get(url,timeout=times)
-			header=fopen.headers
-			body=fopen.content
-			bodysize=len(body)
-			headersize=len(str(header))
-			status=fopen.status_code
-			print "[info]currenting : "+url
-			return header,body,bodysize,headersize,status
-		except Exception, e:
+class Myhttp(object):
+	"""docstring for Myhttp"""
+	def __init__(self):
+		super(Myhttp, self).__init__()
+
+	def opener(self,url,method,times):
+		'''通过传入的方法来请求网页'''
+		if method=='get':
+			try:	
+				fopen=requests.get(url,timeout=times)
+				body=fopen.content
+				bodysize=len(body)
+				status=fopen.status_code
+				print "[info]currenting : "+fopen.url
+				return body,bodysize,status
+			except Exception, e:
+				print e 
+				return self.opener(url,method,times)
+		elif method=='post':
+			data={}
+			fopen=requests.post(url,data,timeout=times)
+		else:
 			pass
-	elif methed=='post':
-		data={}
-		fopen=requests.post(url,data,timeout=times)
-	else:
-		pass
 
-	#print header,bodysize,status
-	
-	
+		
 
-'''if __name__ == '__main__':
-	header,body,bodysize,headersize,status=opener("http://www.yzqy.cc",'get',2)
-	print header'''
+
+
