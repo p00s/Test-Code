@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 #coding:utf8
+'''
+作者:YZQYCN
+博客:http://www.yzqy.cc
+'''
 
 import requests
 import sys,os
@@ -11,7 +15,7 @@ class Main(object):
 	refile = 'bgp.txt'
 	def __init__(self,argv):
 		if len(argv) < 2:
-			print "mast gave a domain or ip"
+			print "Mast give a domain or ip"
 			os._exit(0)
 		try:
 			self.root=socket.gethostbyname(argv[1])
@@ -55,8 +59,19 @@ class Main(object):
 		print "一共找到了"+str(len(links)) +"条内容,结果已经存于本目录的refile.txt文件中!"
 
 if __name__ == '__main__':
-	print " 用法 : python  bgp.py  < ip  或者 domain>"
-	my = Main(sys.argv)
-	content = my.run()
-	my.html(content)
+	try:
+		os.system("clear")
+	except Exception, e:
+		os.system("cls")
+	print '''
+	 Use: python  bgp.py  < ip or domain>
+	             http://www.yzqy.cc'''
+	print "----------------------------------------------------------------"
+	try:
+		my = Main(sys.argv)
+		content = my.run()
+		my.html(content)
+	except KeyboardInterrupt:
+		print " over!"
+		os._exit(0)
 	
