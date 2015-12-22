@@ -51,13 +51,13 @@ class Rsocks5searver(object):
 				addr = socket.inet_ntoa(data[4:8])
 				port = struct.unpack('!H', data[8:])  
 			elif addrtype == 3:     # Domain name  
-                length = struct.unpack('B', data[4:5])
-                addr = data[5:5 + length]
-                port = struct.unpack('!H', data[5 + length:])
+		                length = struct.unpack('B', data[4:5])
+		                addr = data[5:5 + length]
+		                port = struct.unpack('!H', data[5 + length:])
 
-            r = remote(addr,port,mode)
-            if FLAG:
-            	socks5server()
+		    r = remote(addr,port,mode)
+		    if FLAG:
+		    	socks5server()
 
             
 
