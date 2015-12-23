@@ -6,67 +6,63 @@ import struct
 import argparse
 import sys
 import threading
+import select
 import Queue
+import time
 
 BUF_SIZE=4096
 FLAG = 0
 client_q=Queue.Queue()
 server_q=Queue.Queue()
-CON_C =None
-CON_S =None
 
 
 class Socks5proxy(object):
 
-	def socks5server_client(self,r,c):
+	def socks5server(self,sock,remote):
 		try:
-			while True:
-				#r.send(c.recv(BUF_SIZE))
-				if r.send(c.recv(BUF_SIZE)) <= 0:
-					r.close()
-					c.close()
-					break 
+			inputs = [sock, remote]  
+			while True:  
+				r, w, e = select.select(inputs, [], [])  
+				if sock in r:  
+					if remote.send(sock.recv(BUF_SIZE)) <= 0:
+						sock.close()
+						remote.close()
+						break
+					#print "[*]client recv and send remote"  
+				if remote in r:  
+					if sock.send(remote.recv(BUF_SIZE)) <= 0:
+						sock.close()
+						remote.close()
+						break 
+					#print "[*]remote recv and send client"
+					print "[*]current active :",threading.activeCount()  
+		#except Exception,e:
+		#	print e
 		except KeyboardInterrupt:
-			r.close()
-			c.close()
+			remote.close()
+			sock.close()
 			sys.exit(1)
-
-	def socks5server_server(self,r,c):
-		try:
-			while True:
-				if c.send(r.recv(BUF_SIZE)) <= 0:
-					r.close()
-					c.close()
-					break  
-		except KeyboardInterrupt:
-			r.close()
-			c.close()
-			sys.exit(1)
-
-			#if r.send(c.recv(BUF_SIZE)) <= 0:
-			#	break 
-			#if c.send(r.recv(BUF_SIZE)) <= 0:
-			#	break  
 			
 	def remote(self,ipaddr,port,mode,c):#forward client request
 		global FLAG
 		try:
 			r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			r.settimeout(15)
 			r.connect((ipaddr, port))
 			if mode==1:#tcp type
 				reply = b"\x05\x00\x00\x01"
 				FLAG = 1
-				print 55
+				print "[*]Connect remote success ",ipaddr,port
 			else:#udp not suport
 				reply = b"\x05\x07\x00\x01" #
 				FLAG = 0
-			print 6
 			local = r.getsockname()
 			reply += socket.inet_aton(local[0]) + struct.pack(">H", local[1])
 		except Exception, e:
+			print e
 			reply = b"\x05\x05\x00\x01\x00\x00\x00\x00\x00\x00"
 			FLAG = 0
-		print 777
+			print "[*]connect remote fail ",ipaddr,port
 		c.send(reply)
 		return r
 
@@ -77,7 +73,7 @@ class Socks5proxy(object):
 		try:
 			s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			s.bind(("0.0.0.0", port))
-			s.listen(1000)
+			s.listen(10)
 			print "[*]Socks5 server start on 0.0.0.0:",port
 			while True:
 				c,address = s.accept()
@@ -94,17 +90,16 @@ class Socks5proxy(object):
 					length = struct.unpack('B', data[4:5])[0]
 					addr = data[5:5 + length]
 					port = (struct.unpack('!H', data[5 + length:]))[0]
-				print addr,port
+				print "[*]Connect ",addr,port
 				r = self.remote(addr,port,mode,c)
-				print 5
+				print "[*]remote invoke success!"
 				if FLAG:
-					#self.socks5server(r,c)
-					threading.Thread(target=self.socks5server_client, args=(r,c)).start()
-					threading.Thread(target=self.socks5server_server, args=(r,c)).start()
+					#self.socks5server(c,r)
+					threading.Thread(target=self.socks5server, args=(r,c)).start()
+					#threading.Thread(target=self.socks5server_server, args=(r,c)).start()
 		except Exception,e:
 			print e
 			#print "[*]Sockes5 server start fail..."
-			sys.exit(1)
 
 	def rsocks5(self,daddr,dport):
 		global BUF_SIZE
@@ -131,9 +126,12 @@ class Socks5proxy(object):
 					port = (struct.unpack('!H', data[5 + length:]))[0]
 				print addr,port
 				r = self.remote(addr,port,mode,s)#forward requests
+				print "[*]remote invoke success!"
 				if FLAG:
-					threading.Thread(target=self.socks5server_client, args=(r,s)).start()
-					threading.Thread(target=self.socks5server_server, args=(r,s)).start()
+					#self.socks5server(s,r)
+					print "[*]start ......"
+					threading.Thread(target=self.socks5server, args=(s,r)).start()
+					#threading.Thread(target=self.socks5server_server, args=(r,s)).start()
 
 		except Exception,e:
 			print e
@@ -142,66 +140,64 @@ class Socks5proxy(object):
 
 	def forward(self,ports):#forward mode
 		global BUF_SIZE
-		global CON_C
-		global CON_S
-		global client_q
-		global server_q
 
-		def sockclient(*port):
-			try:
-				
-				sock_1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #port 2
-				sock_1.bind(("0.0.0.0", port[1]))
-				sock_1.listen(100)
-				print "[*]Listen on 0.0.0.0:",port[1]
-
-				while True:
-					conn1,address1 = sock_1.accept()
-					print "[*]Client from :"+str(address1[0])+" :"+str(address1[1])+" on Port "+str(port[1])
-					while True:
-						client_q.put(conn1.recv(BUF_SIZE))
-						conn1.send(server_q.get())
-			except KeyboardInterrupt:
-				sys.exit(1)
-
-		def sockserver(*port):
-			global client_q
-			global server_q
-			try:
-				sock_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #port 1
-				sock_2.bind(("0.0.0.0", port[0]))
-				sock_2.listen(100)
-				print "[*]Listen on 0.0.0.0:",port[0]
-				while True:
-					conn2,address2 = sock_2.accept()
-					CON_C =conn2
-					print "[*]Client from :"+str(address2[0])+" :"+str(address2[1])+" on Port "+str(port[0])
-					while True:
-						conn2.send(client_q.get())
-						server_q.put(conn2.recv(BUF_SIZE))
-			except KeyboardInterrupt:
-				sys.exit(1)
-		
-
+		def translate(s,c):
+			print "hehe2"
+			while True:
+				conlist =[c,s]
+				r, w, e = select.select(conlist,[],[])
+				print "hehe3"
+				if c in r:
+					print "hehe4"
+					if s.send(c.recv(BUF_SIZE)) <=0:
+						#c2.close()
+						break
+					print "client recv and send remote"
+				if s in r:
+					print "hehe5"
+					if c2.send(c1.recv(BUF_SIZE)) <=0:
+						#c1.close()
+						break
+					print "remote recv and send client"
+					print "[*]current active :",threading.activeCount()  
+	
 		try:
-			'''sock_1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #port 1
+			sock_1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #port 1
 			sock_1.bind(("0.0.0.0", ports[0]))
-			sock_1.listen(5)
+			sock_1.listen(100)
 			print "[*]Listen on 0.0.0.0:",ports[0]
 
-			sock_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #port 1
+			sock_2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #port 2
 			sock_2.bind(("0.0.0.0", ports[1]))
-			sock_2.listen(5)
+			sock_2.listen(100)
 			print "[*]Listen on 0.0.0.0:",ports[1]
 
+			inputs = [sock_1,sock_2]
+			con =[]
 			while True:
-				conn1,address1 = sock_1.accept()
+				rs, ws, es = select.select(inputs,[],[])
+				if sock_1 in rs:
+					c1, address1 = sock_1.accept()
+					print "[*]Client from :"+str(address1[0])+" :"+str(address1[1])+" on Port "+str(ports[0])
+					con.append(c1)
+				if sock_2 in rs:
+					while True:
+						c2, address2 = sock_2.accept()
+						print "[*]Client from :"+str(address2[0])+" :"+str(address2[1])+" on Port "+str(ports[1])
+						if c1 in con:
+							print "hehe"
+							threading.Thread(target=translate, args=(c1,c2)).start()
+							#con.append(c2)
+
+
+
+				'''conn1,address1 = sock_1.accept()
 				print "[*]Client from :"+str(address1[0])+" :"+str(address1[1])+" on Port "+str(ports[0])
 				conn2,address2 = sock_2.accept()
 				print "[*]Client from :"+str(address2[0])+" :"+str(address2[1])+" on Port "+str(ports[1])'''
 
-			threading.Thread(target=sockclient, args=(ports)).start()
-			threading.Thread(target=sockserver, args=(ports)).start()
+			#threading.Thread(target=sockclient, args=(ports)).start()
+			#threading.Thread(target=sockserver, args=(ports)).start()
 
 		except Exception, e:
 			print e
